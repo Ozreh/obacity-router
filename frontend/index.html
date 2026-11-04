@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Пешеходный навигатор: Обама, Япония</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { width: 100vw; height: 100vh; }
+        .instructions {
+            position: absolute; top: 10px; right: 10px; z-index: 1000;
+            background: white; padding: 10px 15px; border-radius: 8px;
+            font-family: Arial, sans-serif; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="instructions">
+        <h3>Пешеходный навигатор</h3>
+        <p id="status">Кликните в пределах Обамы, чтобы поставить <b>Старт</b></p>
+        <button onclick="resetMap()" style="margin-top: 5px;">Сбросить маршрут</button>
+    </div>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const obamaBounds = [
+            [35.40, 135.65],
+            [35.58, 135.88]
+        ];
+
+        const map = L.map('map', {
+            center: [35.494, 135.748],
+            zoom: 13,
+            minZoom: 12,
+            maxBounds: obamaBounds,
+            maxBoundsViscosity: 1.0
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let startPoint = null;
+        let endPoint = null;
+        let routeLayer = null;
+        let markersGroup = L.layerGroup().addTo(map);
+
+        map.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+
+            if (!startPoint) {
+                startPoint = [lat, lng];
+                L.marker(startPoint).addTo(markersGroup).bindPopup("Старт").openPopup();
+                document.getElementById('status').innerHTML = "Кликните, чтобы поставить <b>Финиш</b>";
+            } else if (!endPoint) {
+                endPoint = [lat, lng];
+                L.marker(endPoint).addTo(markersGroup).bindPopup("Финиш").openPopup();
+                document.getElementById('status').innerText = "Строим маршрут...";
+                
+                getRoute(startPoint, endPoint);
+            }
+        });
+
+        function getRoute(start, end) {
+            const url = `http://127.0.0.1:8000/route?lat1=${start[0]}&lon1=${start[1]}&lat2=${end[0]}&lon2=${end[1]}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        resetMap();
+                        return;
+                    }
+                    routeLayer = L.polyline(data.route, { color: 'blue', weight: 5 }).addTo(map);
+                    document.getElementById('status').innerText = "Маршрут построен!";
+                })
+                .catch(err => {
+                    console.error('Ошибка:', err);
+                    alert("Не удалось связаться с сервером бэкенда!");
+                });
+        }
+
+        function resetMap() {
+            startPoint = null;
+            endPoint = null;
+            markersGroup.clearLayers();
+            if (routeLayer) map.removeLayer(routeLayer);
+            document.getElementById('status').innerHTML = "Кликните в пределах Обамы, чтобы поставить <b>Старт</b>";
+        }
+    </script>
+</body>
+</html>
