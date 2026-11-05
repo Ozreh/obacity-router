@@ -13,21 +13,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-print("Загружаем граф...")
-place_polygon = ox.geocode_to_gdf("Obama, Fukui, Japan")
-G = ox.graph_from_polygon(place_polygon.geometry.iloc[0], network_type="walk")
-print("Готово!")
+G = ox.graph_from_xml("extracted.osm", simplify=True)
 
 @app.get("/route")
-def calculate_route(lat1: float, lon1: float, lat2: float, lon2:float):
+def calculate_route(lat1: float, lon1: float, lat2: float, lon2: float):
     try:
         orig_node = ox.distance.nearest_nodes(G, X=[lon1], Y=[lat1])
         dest_node = ox.distance.nearest_nodes(G, X=[lon2], Y=[lat2])
         
         route_nodes = nx.shortest_path(G, source=orig_node, target=dest_node)
     except Exception as e:
-        print("Ошибка маршрута:", e)
-        return {"error": "Между этими точками нет пешеходной дороги!"}
+        return {"error": "Маршрут не найден"}
     
     route_coords = [[G.nodes[node]['y'], G.nodes[node]['x']] for node in route_nodes]
     

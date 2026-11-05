@@ -17,7 +17,7 @@
 
     <div class="instructions">
         <h3>Пешеходный навигатор</h3>
-        <p id="status">Кликните в пределах Обамы, чтобы поставить <b>Старт</b></p>
+        <p id="status">Кликните на карте, чтобы поставить <b>Старт</b></p>
         <button onclick="resetMap()" style="margin-top: 5px;">Сбросить маршрут</button>
     </div>
 
@@ -25,18 +25,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const obamaBounds = [
-            [35.40, 135.65],
-            [35.58, 135.88]
-        ];
-
-        const map = L.map('map', {
-            center: [35.494, 135.748],
-            zoom: 13,
-            minZoom: 12,
-            maxBounds: obamaBounds,
-            maxBoundsViscosity: 1.0
-        });
+        const map = L.map('map').setView([35.494, 135.748], 14);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
@@ -89,7 +78,7 @@
             endPoint = null;
             markersGroup.clearLayers();
             if (routeLayer) map.removeLayer(routeLayer);
-            document.getElementById('status').innerHTML = "Кликните в пределах Обамы, чтобы поставить <b>Старт</b>";
+            document.getElementById('status').innerHTML = "Кликните на карте, чтобы поставить <b>Старт</b>";
         }
     </script>
 </body>
