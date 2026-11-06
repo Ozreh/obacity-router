@@ -1,85 +1,84 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Пешеходный навигатор: Обама, Япония</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        #map { width: 100vw; height: 100vh; }
-        .instructions {
-            position: absolute; top: 10px; right: 10px; z-index: 1000;
-            background: white; padding: 10px 15px; border-radius: 8px;
-            font-family: Arial, sans-serif; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Пешеходный навигатор: Обама, Япония</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root { --bg:#fff; --fg:#1f2937; --muted:#6b7280; --line:#e5e7eb; --accent:#2563eb; --a:#16a34a; --b:#dc2626; }
+@media (prefers-color-scheme: dark) {
+    :root { --bg:#1f2937; --fg:#f3f4f6; --muted:#9ca3af; --line:#374151; --accent:#60a5fa; }
+}
+* { box-sizing: border-box; }
+html, body { margin:0; height:100%; font-family:system-ui, -apple-system, "Segoe UI", sans-serif; }
+#map { width:100vw; height:100vh; }
+.panel {
+    position:absolute; top:12px; right:12px; z-index:1000; width:300px;
+    background:var(--bg); color:var(--fg); border-radius:14px; padding:16px;
+    box-shadow:0 6px 24px rgba(0,0,0,.25);
+}
+.panel h3 { margin:0 0 12px; font-size:17px; }
+.step { display:flex; align-items:center; gap:10px; padding:8px 0; color:var(--muted); font-size:14px; }
+.step + .step { border-top:1px solid var(--line); }
+.step.active { color:var(--fg); font-weight:600; }
+.step.done { color:var(--fg); }
+.dot { width:24px; height:24px; border-radius:50%; color:#fff; font-size:12px; font-weight:700; display:grid; place-items:center; flex:none; }
+.dot.a { background:var(--a); }
+.dot.b { background:var(--b); }
+.step small { display:block; font-weight:400; color:var(--muted); font-size:12px; }
+#status { margin:12px 0; font-size:14px; min-height:20px; }
+#status.error { color:var(--b); }
+.summary { display:none; gap:8px; margin-bottom:12px; }
+.summary.show { display:flex; }
+.stat { flex:1; background:var(--line); border-radius:10px; padding:8px 10px; }
+.stat b { display:block; font-size:18px; }
+.stat span { font-size:11px; color:var(--muted); }
+.row { display:flex; gap:8px; }
+.row button { flex:1; }
+button {
+    font:inherit; font-size:13px; padding:9px 10px; border-radius:9px; cursor:pointer;
+    border:1px solid var(--line); background:transparent; color:var(--fg);
+}
+button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
+button:disabled { opacity:.4; cursor:default; }
+button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
+button.primary:hover:not(:disabled) { color:#fff; opacity:.9; }
+.row + .row { margin-top:8px; }
+.pin {
+    width:30px; height:30px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
+    display:grid; place-items:center; border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,.4);
+}
+.pin span { transform:rotate(45deg); color:#fff; font-weight:700; font-size:13px; }
+.pin.a { background:var(--a); }
+.pin.b { background:var(--b); }
+.loading .leaflet-container { cursor:progress; }
+@media (max-width:600px) {
+    .panel { top:auto; bottom:0; right:0; left:0; width:auto; border-radius:14px 14px 0 0; }
+}
+</style>
 </head>
 <body>
-
-    <div class="instructions">
-        <h3>Пешеходный навигатор</h3>
-        <p id="status">Кликните на карте, чтобы поставить <b>Старт</b></p>
-        <button onclick="resetMap()" style="margin-top: 5px;">Сбросить маршрут</button>
+<div class="panel">
+    <h3>Пешеходный навигатор</h3>
+    <div class="step" id="stepA"><div class="dot a">A</div><div>Старт<small id="coordA">не выбран</small></div></div>
+    <div class="step" id="stepB"><div class="dot b">B</div><div>Финиш<small id="coordB">не выбран</small></div></div>
+    <div id="status">Кликните на карте, чтобы поставить старт</div>
+    <div class="summary" id="summary">
+        <div class="stat"><b id="dist">—</b><span>расстояние</span></div>
+        <div class="stat"><b id="time">—</b><span>пешком</span></div>
     </div>
-
-    <div id="map"></div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        const map = L.map('map').setView([35.494, 135.748], 14);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© OpenStreetMap'
-        }).addTo(map);
-
-        let startPoint = null;
-        let endPoint = null;
-        let routeLayer = null;
-        let markersGroup = L.layerGroup().addTo(map);
-
-        map.on('click', function(e) {
-            const { lat, lng } = e.latlng;
-
-            if (!startPoint) {
-                startPoint = [lat, lng];
-                L.marker(startPoint).addTo(markersGroup).bindPopup("Старт").openPopup();
-                document.getElementById('status').innerHTML = "Кликните, чтобы поставить <b>Финиш</b>";
-            } else if (!endPoint) {
-                endPoint = [lat, lng];
-                L.marker(endPoint).addTo(markersGroup).bindPopup("Финиш").openPopup();
-                document.getElementById('status').innerText = "Строим маршрут...";
-                
-                getRoute(startPoint, endPoint);
-            }
-        });
-
-        function getRoute(start, end) {
-            const url = `http://127.0.0.1:8000/route?lat1=${start[0]}&lon1=${start[1]}&lat2=${end[0]}&lon2=${end[1]}`;
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.error) {
-                        alert(data.error);
-                        resetMap();
-                        return;
-                    }
-                    routeLayer = L.polyline(data.route, { color: 'blue', weight: 5 }).addTo(map);
-                    document.getElementById('status').innerText = "Маршрут построен!";
-                })
-                .catch(err => {
-                    console.error('Ошибка:', err);
-                    alert("Не удалось связаться с сервером бэкенда!");
-                });
-        }
-
-        function resetMap() {
-            startPoint = null;
-            endPoint = null;
-            markersGroup.clearLayers();
-            if (routeLayer) map.removeLayer(routeLayer);
-            document.getElementById('status').innerHTML = "Кликните на карте, чтобы поставить <b>Старт</b>";
-        }
-    </script>
+    <div class="row">
+        <button id="locate">Моё место</button>
+        <button id="swap" disabled>⇅ Поменять</button>
+    </div>
+    <div class="row">
+        <button id="fit" disabled>Показать весь путь</button>
+        <button id="reset" class="primary">Сбросить</button>
+    </div>
+</div>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
