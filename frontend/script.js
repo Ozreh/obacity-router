@@ -1,4 +1,5 @@
 const API = 'http://127.0.0.1:8000/route';
+const BOUNDARY_API = 'http://127.0.0.1:8000/boundary';
 const WALK_SPEED_KMH = 5;
 
 const map = L.map('map', { zoomControl: false }).setView([35.494, 135.748], 14);
@@ -14,6 +15,33 @@ const els = {
     coordA: $('coordA'), coordB: $('coordB'), stepA: $('stepA'), stepB: $('stepB'),
     swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset')
 };
+
+// Граница Обамы: рисуем на карте и не даём ставить точки снаружи
+let boundaryRing = null; // [[lat, lon], ...]
+
+function insideBoundary(latlng) {
+    if (!boundaryRing) return true; // пока граница не загрузилась, не блокируем
+    let inside = false;
+    for (let i = 0, j = boundaryRing.length - 1; i < boundaryRing.length; j = i++) {
+        const [yi, xi] = boundaryRing[i];
+        const [yj, xj] = boundaryRing[j];
+        if ((yi > latlng.lat) !== (yj > latlng.lat) &&
+            latlng.lng < (xj - xi) * (latlng.lat - yi) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
+}
+
+fetch(BOUNDARY_API)
+    .then(r => r.json())
+    .then(data => {
+        boundaryRing = data.ring;
+        const poly = L.polygon(boundaryRing, {
+            color: '#dc2626', weight: 3, fillOpacity: 0, interactive: false
+        }).addTo(map);
+        map.fitBounds(poly.getBounds());
+        map.setMaxBounds(poly.getBounds().pad(0.1)); // карту нельзя увести далеко от Обамы
+    })
+    .catch(() => {});
 
 const state = { markers: { a: null, b: null }, route: null, controller: null };
 
@@ -117,6 +145,10 @@ async function buildRoute() {
 }
 
 function placePoint(latlng) {
+    if (!insideBoundary(latlng)) {
+        setStatus('Точка за пределами Обамы', true);
+        return;
+    }
     if (!state.markers.a) {
         addMarker('a', latlng);
         setStatus('Теперь поставьте финиш');
