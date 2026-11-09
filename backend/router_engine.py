@@ -78,6 +78,7 @@ class Profile:
     hill_mult: float = 1.0
     delay_scale: float = 1.0
     turn_scale: float = 1.0
+    q_mult: float = 1.0
     avoid_tolls: bool = False
 
 
@@ -86,6 +87,7 @@ PROFILES = {
     "shortest": Profile("shortest", w_time=0.02, w_dist=1.0, traffic_exp=0.0, delay_scale=0.0, turn_scale=0.0),
     "eco": Profile("eco", w_time=1.0, w_dist=0.1, w_climb=8.0, hill_mult=3.0, delay_scale=1.5, turn_scale=1.5),
     "no_traffic": Profile("no_traffic", traffic_exp=2.5),
+    "comfort": Profile("comfort", w_dist=0.1, w_climb=3.0, hill_mult=2.0, delay_scale=1.5, turn_scale=20.0, q_mult=2.5),
 }
 
 
@@ -217,7 +219,7 @@ class Router:
             q = _surface_q(d, hw)
             if q > 1.2:
                 q *= 1.0 + 0.6 * w.rain
-            q = q ** m.q_pow
+            q = q ** (m.q_pow * p.q_mult)
 
             grade = max(-0.3, min(0.3, (zv - zu) / length)) if length > 1.0 else 0.0
             if grade >= 0.0:

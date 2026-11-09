@@ -13,7 +13,7 @@ const $ = id => document.getElementById(id);
 const els = {
     status: $('status'), summary: $('summary'), dist: $('dist'), time: $('time'),
     coordA: $('coordA'), coordB: $('coordB'), stepA: $('stepA'), stepB: $('stepB'),
-    swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset')
+    profile: $('profile'), swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset')
 };
 
 // Граница Обамы: рисуем на карте и не даём ставить точки снаружи
@@ -60,6 +60,12 @@ function fmtDist(m) {
 
 function fmtTime(m) {
     const min = Math.max(1, Math.round(m / 1000 / WALK_SPEED_KMH * 60));
+    if (min < 60) return `${min} мин`;
+    return `${Math.floor(min / 60)} ч ${min % 60} мин`;
+}
+
+function fmtSeconds(s) {
+    const min = Math.max(1, Math.round(s / 60));
     if (min < 60) return `${min} мин`;
     return `${Math.floor(min / 60)} ч ${min % 60} мин`;
 }
@@ -120,7 +126,7 @@ async function buildRoute() {
     document.body.classList.add('loading');
     setStatus('Строим маршрут...');
     try {
-        const res = await fetch(`${API}?lat1=${s.lat}&lon1=${s.lng}&lat2=${e.lat}&lon2=${e.lng}`, {
+        const res = await fetch(`${API}?lat1=${s.lat}&lon1=${s.lng}&lat2=${e.lat}&lon2=${e.lng}&profile=${els.profile.value}`, {
             signal: state.controller.signal
         });
         const data = await res.json();
@@ -129,9 +135,8 @@ async function buildRoute() {
             return;
         }
         state.route = L.polyline(data.route, { color: '#2563eb', weight: 6, opacity: .9 }).addTo(map);
-        const len = routeLength(data.route);
-        els.dist.textContent = fmtDist(len);
-        els.time.textContent = fmtTime(len);
+        els.dist.textContent = fmtDist(data.distance_m ?? routeLength(data.route));
+        els.time.textContent = fmtSeconds(data.time_s);
         els.summary.classList.add('show');
         els.fit.disabled = false;
         setStatus('Маршрут построен. Точки можно перетаскивать');
@@ -172,6 +177,8 @@ function resetAll() {
 map.on('click', e => placePoint(e.latlng));
 
 els.reset.addEventListener('click', resetAll);
+
+els.profile.addEventListener('change', buildRoute);
 
 els.fit.addEventListener('click', () => {
     if (state.route) map.fitBounds(state.route.getBounds(), { padding: [60, 60] });
