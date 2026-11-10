@@ -44,6 +44,7 @@ button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
 button:disabled { opacity:.4; cursor:default; }
 button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
 button.primary:hover:not(:disabled) { color:#fff; opacity:.9; }
+select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:8px; border-radius:9px; border:1px solid var(--line); background:var(--bg); color:var(--fg); }
 .row + .row { margin-top:8px; }
 .pin {
     width:30px; height:30px; border-radius:50% 50% 50% 0; transform:rotate(-45deg);
@@ -63,6 +64,12 @@ button.primary:hover:not(:disabled) { color:#fff; opacity:.9; }
     <h3>Пешеходный навигатор</h3>
     <div class="step" id="stepA"><div class="dot a">A</div><div>Старт<small id="coordA">не выбран</small></div></div>
     <div class="step" id="stepB"><div class="dot b">B</div><div>Финиш<small id="coordB">не выбран</small></div></div>
+    <select id="profile">
+        <option value="fastest">Быстрый</option>
+        <option value="shortest">Короткий</option>
+        <option value="comfort">Комфортный</option>
+        <option value="eco">Без холмов</option>
+    </select>
     <div id="status">Кликните на карте, чтобы поставить старт</div>
     <div class="summary" id="summary">
         <div class="stat"><b id="dist">—</b><span>расстояние</span></div>
