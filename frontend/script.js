@@ -1,5 +1,4 @@
-const API = 'http://127.0.0.1:8000/route';
-const BOUNDARY_API = 'http://127.0.0.1:8000/boundary';
+const { api, readToken, saveToken, errorText } = Nav;
 const WALK_SPEED_KMH = 5;
 
 const map = L.map('map', { zoomControl: false }).setView([35.494, 135.748], 14);
@@ -13,7 +12,8 @@ const $ = id => document.getElementById(id);
 const els = {
     status: $('status'), summary: $('summary'), dist: $('dist'), time: $('time'),
     coordA: $('coordA'), coordB: $('coordB'), stepA: $('stepA'), stepB: $('stepB'),
-    swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset')
+    profile: $('profile'), swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset'),
+    userbar: $('userbar'), userName: $('userName'), logout: $('logout')
 };
 
 // Граница Обамы: рисуем на карте и не даём ставить точки снаружи
@@ -31,17 +31,46 @@ function insideBoundary(latlng) {
     return inside;
 }
 
-fetch(BOUNDARY_API)
-    .then(r => r.json())
-    .then(data => {
-        boundaryRing = data.ring;
-        const poly = L.polygon(boundaryRing, {
-            color: '#dc2626', weight: 3, fillOpacity: 0, interactive: false
-        }).addTo(map);
-        map.fitBounds(poly.getBounds());
-        map.setMaxBounds(poly.getBounds().pad(0.1)); // карту нельзя увести далеко от Обамы
-    })
-    .catch(() => {});
+function loadBoundary() {
+    api('/boundary')
+        .then(res => {
+            if (!res.ok) return;
+            boundaryRing = res.data.ring;
+            const poly = L.polygon(boundaryRing, {
+                color: '#dc2626', weight: 3, fillOpacity: 0, interactive: false
+            }).addTo(map);
+            map.fitBounds(poly.getBounds());
+            map.setMaxBounds(poly.getBounds().pad(0.1)); // карту нельзя увести далеко от Обамы
+        })
+        .catch(() => {});
+}
+
+function logout(expired) {
+    saveToken(null);
+    location.replace(expired ? 'login.html?reason=expired' : 'login.html');
+}
+
+function showMap(user) {
+    els.userName.textContent = user.name || user.email;
+    els.userbar.classList.add('show');
+    document.body.classList.remove('checking');
+    setTimeout(() => map.invalidateSize(), 0);
+    loadBoundary();
+}
+
+async function bootAuth() {
+    if (!readToken()) return logout(false);
+    try {
+        const me = await api('/auth/me');
+        if (me.ok) return showMap(me.data);
+        if (me.status === 401) return logout(true);
+        document.body.classList.remove('checking');
+        setStatus(errorText(me), true);
+    } catch (err) {
+        document.body.classList.remove('checking');
+        setStatus(Nav.NO_CONNECTION, true);
+    }
+}
 
 const state = { markers: { a: null, b: null }, route: null, controller: null };
 
@@ -60,6 +89,12 @@ function fmtDist(m) {
 
 function fmtTime(m) {
     const min = Math.max(1, Math.round(m / 1000 / WALK_SPEED_KMH * 60));
+    if (min < 60) return `${min} мин`;
+    return `${Math.floor(min / 60)} ч ${min % 60} мин`;
+}
+
+function fmtSeconds(s) {
+    const min = Math.max(1, Math.round(s / 60));
     if (min < 60) return `${min} мин`;
     return `${Math.floor(min / 60)} ч ${min % 60} мин`;
 }
@@ -120,18 +155,21 @@ async function buildRoute() {
     document.body.classList.add('loading');
     setStatus('Строим маршрут...');
     try {
-        const res = await fetch(`${API}?lat1=${s.lat}&lon1=${s.lng}&lat2=${e.lat}&lon2=${e.lng}`, {
+        const res = await api(`/route?lat1=${s.lat}&lon1=${s.lng}&lat2=${e.lat}&lon2=${e.lng}&profile=${els.profile.value}`, {
             signal: state.controller.signal
         });
-        const data = await res.json();
+        if (res.status === 401) {
+            logout(true);
+            return;
+        }
+        const data = res.data || {};
         if (data.error) {
             setStatus(data.error + '. Попробуйте передвинуть точки', true);
             return;
         }
         state.route = L.polyline(data.route, { color: '#2563eb', weight: 6, opacity: .9 }).addTo(map);
-        const len = routeLength(data.route);
-        els.dist.textContent = fmtDist(len);
-        els.time.textContent = fmtTime(len);
+        els.dist.textContent = fmtDist(data.distance_m ?? routeLength(data.route));
+        els.time.textContent = fmtSeconds(data.time_s);
         els.summary.classList.add('show');
         els.fit.disabled = false;
         setStatus('Маршрут построен. Точки можно перетаскивать');
@@ -173,6 +211,10 @@ map.on('click', e => placePoint(e.latlng));
 
 els.reset.addEventListener('click', resetAll);
 
+els.profile.addEventListener('change', buildRoute);
+
+els.logout.addEventListener('click', () => logout(false));
+
 els.fit.addEventListener('click', () => {
     if (state.route) map.fitBounds(state.route.getBounds(), { padding: [60, 60] });
 });
@@ -205,3 +247,4 @@ els.locate.addEventListener('click', () => {
 });
 
 updateSteps();
+bootAuth();

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Регистрация — Пешеходный навигатор</title>
+<link rel="stylesheet" href="auth.css">
+</head>
+<body>
+<main class="auth-card">
+    <h1>Регистрация</h1>
+    <p class="lead">Создайте аккаунт, чтобы пользоваться картой Обамы</p>
+    <form id="form" novalidate>
+        <label class="field">Имя
+            <input id="name" type="text" autocomplete="name" maxlength="60">
+        </label>
+        <label class="field">Email
+            <input id="email" type="email" autocomplete="email" required>
+        </label>
+        <label class="field">Пароль (от 8 символов)
+            <input id="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+        </label>
+        <label class="field">Повторите пароль
+            <input id="password2" type="password" autocomplete="new-password" required>
+        </label>
+        <div class="error" id="error" role="alert"></div>
+        <button class="primary" id="submit" type="submit">Создать аккаунт</button>
+    </form>
+    <div id="googleBlock" class="hidden">
+        <div class="divider">или</div>
+        <div id="googleBtn" class="google-btn"></div>
+    </div>
+    <p class="switch">Уже есть аккаунт? <a href="login.html">Войти</a></p>
+</main>
+<script src="common.js"></script>
+<script src="register.js"></script>
+</body>
+</html>
