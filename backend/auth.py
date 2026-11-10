@@ -5,7 +5,6 @@ import re
 import secrets
 import time
 from contextlib import asynccontextmanager
-from pathlib import Path
 from typing import Optional
 
 import jwt
@@ -15,7 +14,8 @@ from pydantic import BaseModel
 
 import userdb
 
-BASE_DIR = Path(__file__).resolve().parent
+from config import BASE_DIR
+
 SECRET_FILE = BASE_DIR / ".auth_secret"
 GOOGLE_ID_FILE = BASE_DIR / "google_client_id.txt"
 TOKEN_TTL_SECONDS = 7 * 24 * 3600
@@ -158,12 +158,6 @@ class LoginBody(BaseModel):
 
 class GoogleBody(BaseModel):
     credential: str
-
-
-@asynccontextmanager
-async def lifespan(_app):
-    userdb.init_db()
-    yield
 
 
 router = APIRouter(prefix="/auth")

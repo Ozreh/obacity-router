@@ -2,10 +2,10 @@ import os
 import sqlite3
 import time
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Optional
 
-BASE_DIR = Path(__file__).resolve().parent
+from config import BASE_DIR
+
 SQLITE_FILE = BASE_DIR / "users.db"
 URL_FILE = BASE_DIR / "database_url.txt"
 
