@@ -245,6 +245,32 @@ els.locate.addEventListener('click', () => {
         { enableHighAccuracy: true, timeout: 10000 }
     );
 });
+function setPointFromSearch(item) {
+    const ll = L.latLng(item.lat, item.lon);
+    if (!insideBoundary(ll)) {
+        setStatus('Адрес за пределами Обамы', true);
+        return;
+    }
+    const { a, b } = state.markers;
+    if (!a) {
+        map.flyTo(ll, 17, { duration: 0.8 });
+        addMarker('a', ll);
+        setStatus('Старт выбран. Теперь выберите финиш');
+    } else if (!b) {
+        addMarker('b', ll);
+        buildRoute();
+    } else {
+        b.setLatLng(ll);
+        updateSteps();
+        buildRoute();
+    }
+}
+
+initSearchBox(map, {
+    input: $('search-input'),
+    list: $('search-results'),
+    onSelect: setPointFromSearch
+});
 
 updateSteps();
 bootAuth();

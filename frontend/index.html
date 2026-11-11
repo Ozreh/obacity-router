@@ -60,6 +60,13 @@ button.primary:hover:not(:disabled) { color:#fff; opacity:.9; }
 .userbar button { flex:none; padding:5px 10px; font-size:12px; }
 .hidden { display:none !important; }
 .checking .panel, .checking #map { visibility:hidden; }
+.search { position:absolute; top:12px; left:12px; z-index:1000; width:320px; max-width:calc(100vw - 24px); }
+#search-input { width:100%; font:inherit; font-size:14px; padding:11px 14px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--fg); box-shadow:0 6px 24px rgba(0,0,0,.25); }
+#search-input:focus { outline:none; border-color:var(--accent); }
+#search-results { margin:6px 0 0; padding:4px; list-style:none; background:var(--bg); color:var(--fg); border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.25); }
+#search-results li { padding:9px 10px; border-radius:8px; cursor:pointer; font-size:14px; }
+#search-results li:hover, #search-results li.active { background:var(--line); }
+.checking .search { visibility:hidden; }
 @media (max-width:600px) {
     .panel { top:auto; bottom:0; right:0; left:0; width:auto; border-radius:14px 14px 0 0; }
 }
@@ -94,9 +101,14 @@ button.primary:hover:not(:disabled) { color:#fff; opacity:.9; }
         <button id="reset" class="primary">Сбросить</button>
     </div>
 </div>
+<div class="search">
+    <input id="search-input" type="search" autocomplete="off" placeholder="Улица, дом" aria-label="Поиск адреса">
+    <ul id="search-results" hidden></ul>
+</div>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="common.js"></script>
+<script src="search-box.js"></script>
 <script src="script.js"></script>
 </body>
 </html>
