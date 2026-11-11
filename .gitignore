@@ -1,0 +1,38 @@
+# Виртуальные окружения
+.venv/
+.venv-*/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+
+# Секреты и данные пользователей — НИКОГДА не коммитить
+backend/.auth_secret
+backend/users.db
+backend/users.db-journal
+backend/google_client_id.txt
+backend/database_url.txt
+.env
+.env.*
+
+# Кэш графа: собирается заново при старте, лишний вес для репозитория
+backend/graph_walk.pickle
+backend/graph_walk.graphml
+backend/cache/
+
+# Архивы, которые я присылал/вы скачивали
+*.zip
+
+# Редактор и ОС
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+node_modules/
+dist/
+.env

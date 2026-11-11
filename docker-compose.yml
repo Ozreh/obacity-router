@@ -1,0 +1,32 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports: ["9200:9200"]
+    volumes: [esdata:/usr/share/elasticsearch/data]
+
+  search-service:
+    build: ./search-service
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      INTERNAL_TOKEN: change-me
+      ALLOWED_ORIGIN: "*"
+      PORT: 3002
+    ports: ["3002:3002"]
+    depends_on: [elasticsearch]
+
+  address-service:
+    build: ./address-service
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      SEARCH_SERVICE_URL: http://search-service:3002
+      INTERNAL_TOKEN: change-me
+      PORT: 3001
+    ports: ["3001:3001"]
+    depends_on: [search-service]
+
+volumes:
+  esdata:
