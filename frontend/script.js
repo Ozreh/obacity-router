@@ -1,5 +1,6 @@
 const API = 'http://127.0.0.1:8000/route';
 const BOUNDARY_API = 'http://127.0.0.1:8000/boundary';
+const REVERSE_URL = 'http://localhost:8000/reverse';
 const WALK_SPEED_KMH = 5;
 
 const map = L.map('map', { zoomControl: false }).setView([35.494, 135.748], 14);
@@ -53,6 +54,28 @@ const pinIcon = (type, label) => L.divIcon({
 });
 
 const fmtCoord = ll => `${ll.lat.toFixed(5)}, ${ll.lng.toFixed(5)}`;
+const addresses = { a: null, b: null };
+const addressRequests = { a: null, b: null };
+
+async function reverseGeocode(type, ll) {
+    if (addressRequests[type]) addressRequests[type].abort();
+    const controller = new AbortController();
+    addressRequests[type] = controller;
+    addresses[type] = 'Ищем адрес…';
+    updateSteps();
+    try {
+        const params = new URLSearchParams({ lat: ll.lat, lon: ll.lng });
+        const response = await fetch(`${REVERSE_URL}?${params}`, { signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        if (state.markers[type]?.getLatLng().distanceTo(ll) > 1) return;
+        addresses[type] = data.label || null;
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        addresses[type] = null;
+    }
+    updateSteps();
+}
 
 function fmtDist(m) {
     return m < 1000 ? `${Math.round(m)} м` : `${(m / 1000).toFixed(2)} км`;
@@ -85,8 +108,8 @@ function setStatus(text, isError = false) {
 
 function updateSteps() {
     const { a, b } = state.markers;
-    els.coordA.textContent = a ? fmtCoord(a.getLatLng()) : 'не выбран';
-    els.coordB.textContent = b ? fmtCoord(b.getLatLng()) : 'не выбран';
+    els.coordA.textContent = a ? (addresses.a || fmtCoord(a.getLatLng())) : 'не выбран';
+    els.coordB.textContent = b ? (addresses.b || fmtCoord(b.getLatLng())) : 'не выбран';
     els.stepA.classList.toggle('done', !!a);
     els.stepB.classList.toggle('done', !!b);
     els.stepA.classList.toggle('active', !a);
@@ -107,13 +130,18 @@ function addMarker(type, latlng) {
         draggable: true,
         icon: pinIcon(type, type === 'a' ? 'A' : 'B')
     }).addTo(map);
+    marker.on('dragstart', () => { addresses[type] = null; });
     marker.on('drag', updateSteps);
     marker.on('dragend', () => {
+        addresses[type] = null;
         updateSteps();
+        reverseGeocode(type, marker.getLatLng());
         buildRoute();
     });
     state.markers[type] = marker;
+    addresses[type] = null;
     updateSteps();
+    reverseGeocode(type, marker.getLatLng());
 }
 
 async function buildRoute() {
@@ -168,6 +196,8 @@ function resetAll() {
     Object.keys(state.markers).forEach(k => {
         if (state.markers[k]) map.removeLayer(state.markers[k]);
         state.markers[k] = null;
+        addresses[k] = null;
+        if (addressRequests[k]) addressRequests[k].abort();
     });
     updateSteps();
     setStatus('Кликните на карте, чтобы поставить старт');

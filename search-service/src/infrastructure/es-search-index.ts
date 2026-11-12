@@ -1,5 +1,5 @@
 import { Client, errors, type estypes } from "@elastic/elasticsearch";
-import type { AddressDocument, SearchIndex, SuggestQuery, Suggestion } from "../domain/ports.js";
+import type { AddressDocument, ReverseResult, SearchIndex, SuggestQuery, Suggestion } from "../domain/ports.js";
 import { queryVariants } from "../domain/query-variants.js";
 import { ADDRESS_INDEX, addressIndexBody } from "./index-config.js";
 
@@ -69,5 +69,25 @@ export class ElasticSearchIndex implements SearchIndex {
       lat: h._source.location.lat,
       lon: h._source.location.lon,
     }));
+  }
+
+  async reverse(lat: number, lon: number): Promise<ReverseResult | null> {
+    const res = await this.client.search<any>({
+      index: ADDRESS_INDEX,
+      size: 1,
+      _source: ["label", "city", "street", "house_number", "location"],
+      query: { match_all: {} },
+      sort: [{ _geo_distance: { location: { lat, lon }, order: "asc", unit: "m" } }],
+    });
+    const hit = res.hits.hits[0];
+    if (!hit) return null;
+    return {
+      label: hit._source.label,
+      city: hit._source.city,
+      street: hit._source.street,
+      house_number: hit._source.house_number,
+      lat: hit._source.location.lat,
+      lon: hit._source.location.lon,
+    };
   }
 }

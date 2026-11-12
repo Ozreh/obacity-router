@@ -1,4 +1,4 @@
-const SEARCH_URL = "http://localhost:3002/search";
+const SEARCH_URL = "http://127.0.0.1:8000/search";
 
 const debounce = (fn, delay) => {
   let timer;
@@ -13,6 +13,7 @@ function initSearchBox(map, { input, list, onSelect }) {
   let marker = null;
   let items = [];
   let active = -1;
+  let requestNumber = 0;
 
   const hide = () => {
     list.hidden = true;
@@ -54,6 +55,7 @@ function initSearchBox(map, { input, list, onSelect }) {
   };
 
   const fetchSuggestions = async (q) => {
+    const currentRequest = ++requestNumber;
     if (controller) controller.abort();
     controller = new AbortController();
     const center = map.getCenter();
@@ -61,9 +63,10 @@ function initSearchBox(map, { input, list, onSelect }) {
     try {
       const res = await fetch(`${SEARCH_URL}?${params}`, { signal: controller.signal });
       if (!res.ok) throw new Error(res.status);
-      render(await res.json());
+      const results = await res.json();
+      if (currentRequest === requestNumber && input.value.trim() === q) render(results);
     } catch (e) {
-      if (e.name !== "AbortError") hide();
+      if (e.name !== "AbortError" && currentRequest === requestNumber) hide();
     }
   };
 

@@ -6,8 +6,10 @@ import networkx as nx
 import osmnx as ox
 import shapely
 from fastapi import FastAPI
+from fastapi import Query
 from fastapi.middleware.cors import CORSMiddleware
 from shapely.geometry import Point, Polygon
+from shapely import STRtree
 
 from router_engine import MODES, PROFILES, Router, Weather
 
@@ -75,12 +77,53 @@ def load_graph():
 
 G = load_graph()
 ROUTER = Router(G)
+ADDRESS_DATA_FILE = BASE_DIR.parent / "address-service" / "data" / "obama-addresses.json"
+with open(ADDRESS_DATA_FILE, encoding="utf-8") as f:
+    ADDRESS_DATA = json.load(f)
+ADDRESS_POINTS = [Point(item["lon"], item["lat"]) for item in ADDRESS_DATA]
+ADDRESS_TREE = STRtree(ADDRESS_POINTS)
 print(f"Граф загружен: {len(G.nodes)} узлов, {len(G.edges)} рёбер")
 
 
 @app.get("/boundary")
 def get_boundary():
     return {"name": "Obama", "ring": RING}
+
+
+@app.get("/search")
+def search_addresses(
+    q: str = Query(min_length=1, max_length=100),
+    limit: int = Query(default=8, ge=1, le=20),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lon: float | None = Query(default=None, ge=-180, le=180),
+):
+    query = " ".join(q.casefold().split())
+    matches = []
+    for item in ADDRESS_DATA:
+        street = item.get("street", "")
+        house = item.get("house", "")
+        label = " ".join(part.strip() for part in (street, house) if part and part.strip()) or "小浜市"
+        searchable = f"{label} 小浜市 Obama".casefold()
+        # Prefix matching makes suggestions appear as soon as the user starts typing.
+        tokens = searchable.split()
+        if any(token.startswith(query) for token in tokens) or query in searchable:
+            rank = 0 if label.casefold().startswith(query) else 1 if any(token.startswith(query) for token in tokens) else 2
+            distance = (item["lat"] - lat) ** 2 + (item["lon"] - lon) ** 2 if lat is not None and lon is not None else 0
+            matches.append((rank, distance, {"id": f"{item['lat']}:{item['lon']}", "label": label, "city": "Obama", "lat": item["lat"], "lon": item["lon"]}))
+    matches.sort(key=lambda result: (result[0], result[1], result[2]["label"]))
+    return [result[2] for result in matches[:limit]]
+
+
+@app.get("/reverse")
+def reverse_geocode(lat: float = Query(ge=-90, le=90), lon: float = Query(ge=-180, le=180)):
+    point = Point(lon, lat)
+    nearest = ADDRESS_TREE.nearest(point)
+    item = ADDRESS_DATA[int(nearest)]
+    distance_m = point.distance(ADDRESS_POINTS[int(nearest)]) * 111_000
+    street = item.get("street", "").strip()
+    house = item.get("house", "").strip()
+    label = " ".join(part for part in (street, house) if part) or "小浜市"
+    return {"label": label, "street": street, "house_number": house or None, "distance_m": round(distance_m)}
 
 
 @app.get("/profiles")
