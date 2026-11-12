@@ -42,6 +42,7 @@ button {
 }
 button:hover:not(:disabled) { border-color:var(--accent); color:var(--accent); }
 button:disabled { opacity:.4; cursor:default; }
+select { flex:1; font:inherit; font-size:13px; padding:9px 10px; border-radius:9px; border:1px solid var(--line); background:var(--bg); color:var(--fg); }
 button.primary { background:var(--accent); border-color:var(--accent); color:#fff; }
 button.primary:hover:not(:disabled) { color:#fff; opacity:.9; }
 select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:8px; border-radius:9px; border:1px solid var(--line); background:var(--bg); color:var(--fg); }
@@ -72,9 +73,10 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
 }
 </style>
 </head>
-<body>
+<body class="checking">
 <div class="panel">
     <h3>Пешеходный навигатор</h3>
+    <div class="userbar" id="userbar"><span id="userName"></span><button id="logout" type="button">Выйти</button></div>
     <div class="step" id="stepA"><div class="dot a">A</div><div>Старт<small id="coordA">не выбран</small></div></div>
     <div class="step" id="stepB"><div class="dot b">B</div><div>Финиш<small id="coordB">не выбран</small></div></div>
     <select id="profile">

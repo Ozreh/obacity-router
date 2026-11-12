@@ -1,6 +1,5 @@
-const API = 'http://127.0.0.1:8000/route';
-const BOUNDARY_API = 'http://127.0.0.1:8000/boundary';
-const REVERSE_URL = 'http://localhost:8000/reverse';
+const { api, readToken, saveToken, errorText } = Nav;
+const REVERSE_URL = 'http://127.0.0.1:8000/reverse';
 const WALK_SPEED_KMH = 5;
 
 const map = L.map('map', { zoomControl: false }).setView([35.494, 135.748], 14);
@@ -14,7 +13,8 @@ const $ = id => document.getElementById(id);
 const els = {
     status: $('status'), summary: $('summary'), dist: $('dist'), time: $('time'),
     coordA: $('coordA'), coordB: $('coordB'), stepA: $('stepA'), stepB: $('stepB'),
-    profile: $('profile'), swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset')
+    profile: $('profile'), swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset'),
+    userbar: $('userbar'), userName: $('userName'), logout: $('logout')
 };
 
 // Граница Обамы: рисуем на карте и не даём ставить точки снаружи
@@ -32,17 +32,46 @@ function insideBoundary(latlng) {
     return inside;
 }
 
-fetch(BOUNDARY_API)
-    .then(r => r.json())
-    .then(data => {
-        boundaryRing = data.ring;
-        const poly = L.polygon(boundaryRing, {
-            color: '#dc2626', weight: 3, fillOpacity: 0, interactive: false
-        }).addTo(map);
-        map.fitBounds(poly.getBounds());
-        map.setMaxBounds(poly.getBounds().pad(0.1)); // карту нельзя увести далеко от Обамы
-    })
-    .catch(() => {});
+function loadBoundary() {
+    api('/boundary')
+        .then(res => {
+            if (!res.ok) return;
+            boundaryRing = res.data.ring;
+            const poly = L.polygon(boundaryRing, {
+                color: '#dc2626', weight: 3, fillOpacity: 0, interactive: false
+            }).addTo(map);
+            map.fitBounds(poly.getBounds());
+            map.setMaxBounds(poly.getBounds().pad(0.1)); // карту нельзя увести далеко от Обамы
+        })
+        .catch(() => {});
+}
+
+function logout(expired) {
+    saveToken(null);
+    location.replace(expired ? 'login.html?reason=expired' : 'login.html');
+}
+
+function showMap(user) {
+    els.userName.textContent = user.name || user.email;
+    els.userbar.classList.add('show');
+    document.body.classList.remove('checking');
+    setTimeout(() => map.invalidateSize(), 0);
+    loadBoundary();
+}
+
+async function bootAuth() {
+    if (!readToken()) return logout(false);
+    try {
+        const me = await api('/auth/me');
+        if (me.ok) return showMap(me.data);
+        if (me.status === 401) return logout(true);
+        document.body.classList.remove('checking');
+        setStatus(errorText(me), true);
+    } catch (err) {
+        document.body.classList.remove('checking');
+        setStatus(Nav.NO_CONNECTION, true);
+    }
+}
 
 const state = { markers: { a: null, b: null }, route: null, controller: null };
 
@@ -58,7 +87,7 @@ const addresses = { a: null, b: null };
 const addressRequests = { a: null, b: null };
 
 async function reverseGeocode(type, ll) {
-    if (addressRequests[type]) addressRequests[type].abort();
+    addressRequests[type]?.abort();
     const controller = new AbortController();
     addressRequests[type] = controller;
     addresses[type] = 'Ищем адрес…';
@@ -154,10 +183,14 @@ async function buildRoute() {
     document.body.classList.add('loading');
     setStatus('Строим маршрут...');
     try {
-        const res = await fetch(`${API}?lat1=${s.lat}&lon1=${s.lng}&lat2=${e.lat}&lon2=${e.lng}&profile=${els.profile.value}`, {
+        const res = await api(`/route?lat1=${s.lat}&lon1=${s.lng}&lat2=${e.lat}&lon2=${e.lng}&profile=${els.profile.value}`, {
             signal: state.controller.signal
         });
-        const data = await res.json();
+        if (res.status === 401) {
+            logout(true);
+            return;
+        }
+        const data = res.data || {};
         if (data.error) {
             setStatus(data.error + '. Попробуйте передвинуть точки', true);
             return;
@@ -197,7 +230,7 @@ function resetAll() {
         if (state.markers[k]) map.removeLayer(state.markers[k]);
         state.markers[k] = null;
         addresses[k] = null;
-        if (addressRequests[k]) addressRequests[k].abort();
+        addressRequests[k]?.abort();
     });
     updateSteps();
     setStatus('Кликните на карте, чтобы поставить старт');
@@ -210,6 +243,8 @@ els.reset.addEventListener('click', resetAll);
 
 els.profile.addEventListener('change', buildRoute);
 
+els.logout.addEventListener('click', () => logout(false));
+
 els.fit.addEventListener('click', () => {
     if (state.route) map.fitBounds(state.route.getBounds(), { padding: [60, 60] });
 });
@@ -220,6 +255,8 @@ els.swap.addEventListener('click', () => {
     const pa = a.getLatLng();
     a.setLatLng(b.getLatLng());
     b.setLatLng(pa);
+    reverseGeocode('a', a.getLatLng());
+    reverseGeocode('b', b.getLatLng());
     updateSteps();
     buildRoute();
 });
@@ -257,6 +294,7 @@ function setPointFromSearch(item) {
     } else {
         b.setLatLng(ll);
         updateSteps();
+        reverseGeocode('b', ll);
         buildRoute();
     }
 }
@@ -268,3 +306,4 @@ initSearchBox(map, {
 });
 
 updateSteps();
+bootAuth();

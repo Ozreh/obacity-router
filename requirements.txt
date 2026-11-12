@@ -3,3 +3,9 @@ uvicorn[standard]
 osmnx
 networkx
 scikit-learn
+numpy
+shapely
+pyjwt
+google-auth
+requests
+psycopg[binary]

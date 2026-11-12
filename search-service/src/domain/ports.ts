@@ -24,19 +24,9 @@ export interface Suggestion {
   lon: number;
 }
 
-export interface ReverseResult {
-  label: string | null;
-  city?: string;
-  street?: string;
-  house_number?: string;
-  lat?: number;
-  lon?: number;
-}
-
 export interface SearchIndex {
   ensure(): Promise<void>;
   upsert(doc: AddressDocument): Promise<void>;
   remove(id: string, version: number): Promise<void>;
   suggest(query: SuggestQuery): Promise<Suggestion[]>;
-  reverse(lat: number, lon: number): Promise<ReverseResult | null>;
 }

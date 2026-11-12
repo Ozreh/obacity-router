@@ -23,11 +23,6 @@ const searchSchema = z.object({
   lon: z.coerce.number().optional(),
 });
 
-const reverseSchema = z.object({
-  lat: z.coerce.number().min(-90).max(90),
-  lon: z.coerce.number().min(-180).max(180),
-});
-
 export const searchRoutes = (index: SearchIndex, internalToken: string, allowedOrigin: string) => {
   const app = new Hono();
 
@@ -37,11 +32,6 @@ export const searchRoutes = (index: SearchIndex, internalToken: string, allowedO
     const { q, limit, lat, lon } = c.req.valid("query");
     const near = lat !== undefined && lon !== undefined ? { lat, lon } : undefined;
     return c.json(await index.suggest({ q, limit, near }));
-  });
-
-  app.get("/reverse", zValidator("query", reverseSchema), async (c) => {
-    const { lat, lon } = c.req.valid("query");
-    return c.json(await index.reverse(lat, lon) ?? { label: null });
   });
 
   app.use("/internal/*", async (c, next) => {
