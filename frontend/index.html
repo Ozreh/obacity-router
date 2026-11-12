@@ -21,6 +21,9 @@ html, body { margin:0; height:100%; font-family:system-ui, -apple-system, "Segoe
 .panel h3 { margin:0 0 12px; font-size:17px; }
 .step { display:flex; align-items:center; gap:10px; padding:8px 0; color:var(--muted); font-size:14px; }
 .step + .step { border-top:1px solid var(--line); }
+.step-info { flex:1; min-width:0; }
+.step-clear { flex:none; width:28px; height:28px; padding:0; border:0; border-radius:50%; color:var(--muted); font-size:20px; line-height:1; }
+.step-clear[hidden] { display:none; }
 .step.active { color:var(--fg); font-weight:600; }
 .step.done { color:var(--fg); }
 .dot { width:24px; height:24px; border-radius:50%; color:#fff; font-size:12px; font-weight:700; display:grid; place-items:center; flex:none; }
@@ -63,8 +66,11 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
 .hidden { display:none !important; }
 .checking .panel, .checking #map { visibility:hidden; }
 .search { position:absolute; top:12px; left:12px; z-index:1000; width:320px; max-width:calc(100vw - 24px); }
-#search-input { width:100%; font:inherit; font-size:14px; padding:11px 14px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--fg); box-shadow:0 6px 24px rgba(0,0,0,.25); }
+.search-field { position:relative; }
+#search-input { width:100%; font:inherit; font-size:14px; padding:11px 42px 11px 14px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--fg); box-shadow:0 6px 24px rgba(0,0,0,.25); }
 #search-input:focus { outline:none; border-color:var(--accent); }
+#search-clear { position:absolute; top:50%; right:7px; transform:translateY(-50%); width:30px; height:30px; padding:0; border:0; border-radius:50%; color:var(--muted); font-size:20px; line-height:1; }
+#search-clear[hidden] { display:none; }
 #search-results { margin:6px 0 0; padding:4px; list-style:none; background:var(--bg); color:var(--fg); border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.25); }
 #search-results li { padding:9px 10px; border-radius:8px; cursor:pointer; font-size:14px; }
 #search-results li:hover, #search-results li.active { background:var(--line); }
@@ -79,8 +85,8 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
     <h3>Пешеходный навигатор</h3>
     <div class="userbar" id="userbar"><span id="userName"></span><button id="logout" type="button">Выйти</button></div>
     <div class="userbar" id="authLinks"><a href="login.html">Войти</a><a href="register.html">Регистрация</a></div>
-    <div class="step" id="stepA"><div class="dot a">A</div><div>Старт<small id="coordA">не выбран</small></div></div>
-    <div class="step" id="stepB"><div class="dot b">B</div><div>Финиш<small id="coordB">не выбран</small></div></div>
+    <div class="step" id="stepA"><div class="dot a">A</div><div class="step-info">Старт<small id="coordA">не выбран</small></div><button class="step-clear" id="clearA" type="button" aria-label="Удалить старт" title="Удалить старт" hidden>×</button></div>
+    <div class="step" id="stepB"><div class="dot b">B</div><div class="step-info">Финиш<small id="coordB">не выбран</small></div><button class="step-clear" id="clearB" type="button" aria-label="Удалить финиш" title="Удалить финиш" hidden>×</button></div>
     <select id="profile">
         <option value="fastest">Быстрый</option>
         <option value="shortest">Короткий</option>
@@ -103,7 +109,10 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
     </div>
 </div>
 <div class="search">
-    <input id="search-input" type="search" autocomplete="off" placeholder="Улица, дом" aria-label="Поиск адреса">
+    <div class="search-field">
+        <input id="search-input" type="search" autocomplete="off" placeholder="Улица, дом" aria-label="Поиск адреса">
+        <button id="search-clear" type="button" aria-label="Очистить поиск" title="Очистить поиск" hidden>×</button>
+    </div>
     <ul id="search-results" hidden></ul>
 </div>
 <div id="map"></div>

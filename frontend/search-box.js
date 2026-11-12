@@ -8,12 +8,16 @@ const debounce = (fn, delay) => {
   };
 };
 
-function initSearchBox(map, { input, list, onSelect }) {
+function initSearchBox(map, { input, list, clearButton, onSelect }) {
   let controller = null;
   let marker = null;
   let items = [];
   let active = -1;
   let requestNumber = 0;
+
+  const updateClearButton = () => {
+    if (clearButton) clearButton.hidden = !input.value;
+  };
 
   const hide = () => {
     list.hidden = true;
@@ -24,6 +28,7 @@ function initSearchBox(map, { input, list, onSelect }) {
 
   const select = (item) => {
     input.value = item.label;
+    updateClearButton();
     hide();
     if (onSelect) {
       onSelect(item);
@@ -73,6 +78,7 @@ function initSearchBox(map, { input, list, onSelect }) {
   const debounced = debounce(fetchSuggestions, 250);
 
   input.addEventListener("input", () => {
+    updateClearButton();
     const q = input.value.trim();
     if (!q) {
       if (controller) controller.abort();
@@ -83,6 +89,15 @@ function initSearchBox(map, { input, list, onSelect }) {
   });
 
   input.addEventListener("focus", () => input.select());
+
+  clearButton?.addEventListener("click", () => {
+    if (controller) controller.abort();
+    requestNumber++;
+    input.value = "";
+    hide();
+    updateClearButton();
+    input.focus();
+  });
 
   input.addEventListener("keydown", (e) => {
     if (e.key === "ArrowDown" || e.key === "ArrowUp") {
@@ -100,4 +115,5 @@ function initSearchBox(map, { input, list, onSelect }) {
   });
 
   input.addEventListener("blur", hide);
+  updateClearButton();
 }

@@ -13,6 +13,7 @@ const $ = id => document.getElementById(id);
 const els = {
     status: $('status'), summary: $('summary'), dist: $('dist'), time: $('time'),
     coordA: $('coordA'), coordB: $('coordB'), stepA: $('stepA'), stepB: $('stepB'),
+    clearA: $('clearA'), clearB: $('clearB'),
     profile: $('profile'), swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset'),
     userbar: $('userbar'), userName: $('userName'), logout: $('logout'), authLinks: $('authLinks')
 };
@@ -145,6 +146,8 @@ function updateSteps() {
     els.stepB.classList.toggle('done', !!b);
     els.stepA.classList.toggle('active', !a);
     els.stepB.classList.toggle('active', !!a && !b);
+    els.clearA.hidden = !a;
+    els.clearB.hidden = !b;
     els.swap.disabled = !(a && b);
 }
 
@@ -239,9 +242,26 @@ function resetAll() {
     document.body.classList.remove('loading');
 }
 
+function clearPoint(type) {
+    const marker = state.markers[type];
+    if (!marker) return;
+    map.removeLayer(marker);
+    state.markers[type] = null;
+    addresses[type] = null;
+    addressRequests[type]?.abort();
+    clearRoute();
+    updateSteps();
+    setStatus(type === 'a'
+        ? (state.markers.b ? 'Старт удалён. Выберите новый старт' : 'Старт удалён. Кликните на карте, чтобы поставить старт')
+        : 'Финиш удалён. Выберите новый финиш');
+    if (state.markers.a && state.markers.b) buildRoute();
+}
+
 map.on('click', e => placePoint(e.latlng));
 
 els.reset.addEventListener('click', resetAll);
+els.clearA.addEventListener('click', () => clearPoint('a'));
+els.clearB.addEventListener('click', () => clearPoint('b'));
 
 els.profile.addEventListener('change', buildRoute);
 
@@ -304,6 +324,7 @@ function setPointFromSearch(item) {
 initSearchBox(map, {
     input: $('search-input'),
     list: $('search-results'),
+    clearButton: $('search-clear'),
     onSelect: setPointFromSearch
 });
 
