@@ -14,7 +14,7 @@ const els = {
     status: $('status'), summary: $('summary'), dist: $('dist'), time: $('time'),
     coordA: $('coordA'), coordB: $('coordB'), stepA: $('stepA'), stepB: $('stepB'),
     profile: $('profile'), swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset'),
-    userbar: $('userbar'), userName: $('userName'), logout: $('logout')
+    userbar: $('userbar'), userName: $('userName'), logout: $('logout'), authLinks: $('authLinks')
 };
 
 // Граница Обамы: рисуем на карте и не даём ставить точки снаружи
@@ -66,9 +66,11 @@ async function bootAuth() {
         if (me.ok) return showMap(me.data);
         if (me.status === 401) return logout(true);
         document.body.classList.remove('checking');
+        els.authLinks.classList.add('show');
         setStatus(errorText(me), true);
     } catch (err) {
         document.body.classList.remove('checking');
+        els.authLinks.classList.add('show');
         setStatus(Nav.NO_CONNECTION, true);
     }
 }

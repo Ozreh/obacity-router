@@ -59,6 +59,7 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
 .userbar.show { display:flex; }
 .userbar span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .userbar button { flex:none; padding:5px 10px; font-size:12px; }
+.userbar a { color:var(--accent); text-decoration:none; font-weight:600; }
 .hidden { display:none !important; }
 .checking .panel, .checking #map { visibility:hidden; }
 .search { position:absolute; top:12px; left:12px; z-index:1000; width:320px; max-width:calc(100vw - 24px); }
@@ -77,6 +78,7 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
 <div class="panel">
     <h3>Пешеходный навигатор</h3>
     <div class="userbar" id="userbar"><span id="userName"></span><button id="logout" type="button">Выйти</button></div>
+    <div class="userbar" id="authLinks"><a href="login.html">Войти</a><a href="register.html">Регистрация</a></div>
     <div class="step" id="stepA"><div class="dot a">A</div><div>Старт<small id="coordA">не выбран</small></div></div>
     <div class="step" id="stepB"><div class="dot b">B</div><div>Финиш<small id="coordB">не выбран</small></div></div>
     <select id="profile">
@@ -84,6 +86,7 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
         <option value="shortest">Короткий</option>
         <option value="comfort">Комфортный</option>
         <option value="eco">Без холмов</option>
+        <option value="no_traffic">Без пробок</option>
     </select>
     <div id="status">Кликните на карте, чтобы поставить старт</div>
     <div class="summary" id="summary">
