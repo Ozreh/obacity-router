@@ -43,9 +43,18 @@ def get_service(request: Request):
 @router.get("/route", response_model=RouteResponse)
 def calculate_route(request: Request, lat1: float, lon1: float, lat2: float, lon2: float,
                     profile: str = "fastest", mode: str = "foot", rain: float = 0.0,
-                    ice: float = 0.0, avoid_tolls: bool = False):
+                    ice: float = 0.0, avoid_tolls: bool = False,
+                    waypoints: str | None = Query(default=None, max_length=2000)):
     try:
-        result = get_service(request).route(lat1, lon1, lat2, lon2, profile, mode, rain, ice, avoid_tolls)
+        parsed_waypoints = []
+        if waypoints:
+            parsed_waypoints = [(float(pair.split(",")[0]), float(pair.split(",")[1]))
+                                for pair in waypoints.split(";")]
+            if len(parsed_waypoints) > 8 or any(not (-90 <= lat <= 90 and -180 <= lon <= 180)
+                                                   for lat, lon in parsed_waypoints):
+                return {"error": "Некорректные промежуточные остановки"}
+        result = get_service(request).route(lat1, lon1, lat2, lon2, profile, mode, rain, ice,
+                                            avoid_tolls, parsed_waypoints)
         return {
             "route": result["coords"],
             "time_s": round(result["time_s"]),

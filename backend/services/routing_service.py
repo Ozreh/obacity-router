@@ -32,22 +32,31 @@ class RoutingService:
 
     def route(self, lat1: float, lon1: float, lat2: float, lon2: float,
               profile: str = "fastest", mode: str = "foot", rain: float = 0.0,
-              ice: float = 0.0, avoid_tolls: bool = False):
+              ice: float = 0.0, avoid_tolls: bool = False,
+              waypoints: list[tuple[float, float]] | None = None):
         if profile not in PROFILES:
             raise RouteError("Неизвестный профиль")
         if mode not in MODES:
             raise RouteError("Неизвестный режим")
-        if not (self._boundary.contains(Point(lon1, lat1)) and self._boundary.contains(Point(lon2, lat2))):
+        points = [(lat1, lon1), *(waypoints or []), (lat2, lon2)]
+        if any(not self._boundary.contains(Point(lon, lat)) for lat, lon in points):
             raise RouteError("Точка за пределами Обамы")
 
         try:
-            origin = ox.distance.nearest_nodes(self._graph, X=lon1, Y=lat1)
-            destination = ox.distance.nearest_nodes(self._graph, X=lon2, Y=lat2)
+            nodes = [ox.distance.nearest_nodes(self._graph, X=lon, Y=lat) for lat, lon in points]
             selected_profile = replace(PROFILES[profile], mode=mode, avoid_tolls=avoid_tolls)
             weather = Weather(rain=max(0.0, min(1.0, rain)), ice=max(0.0, min(1.0, ice)))
-            result = self._router.route(origin, destination, selected_profile, weather, astar=False)
+            segments = [self._router.route(start, end, selected_profile, weather, astar=False)
+                        for start, end in zip(nodes, nodes[1:])]
         except Exception as error:
             raise RouteError("Маршрут не найден") from error
-        if result is None:
+        if any(segment is None for segment in segments):
             raise RouteError("Между точками нет пути")
-        return result
+        coords = []
+        distance_m = 0
+        time_s = 0
+        for segment in segments:
+            coords.extend(segment["coords"] if not coords else segment["coords"][1:])
+            distance_m += segment["distance_m"]
+            time_s += segment["time_s"]
+        return {"coords": coords, "distance_m": distance_m, "time_s": time_s}

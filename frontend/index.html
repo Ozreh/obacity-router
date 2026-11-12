@@ -19,6 +19,13 @@ html, body { margin:0; height:100%; font-family:system-ui, -apple-system, "Segoe
     box-shadow:0 6px 24px rgba(0,0,0,.25);
 }
 .panel h3 { margin:0 0 12px; font-size:17px; }
+.panel.dragging { transition:none; }
+.waypoints { margin:8px 0; }
+.waypoint { display:flex; align-items:center; gap:8px; padding:7px 0; border-top:1px solid var(--line); font-size:13px; }
+.waypoint-label { flex:1; min-width:0; }
+.waypoint-label small { display:block; overflow:hidden; color:var(--muted); text-overflow:ellipsis; white-space:nowrap; }
+.waypoint button { flex:none; padding:4px 8px; }
+.waypoint-actions { display:flex; gap:4px; }
 .step { display:flex; align-items:center; gap:10px; padding:8px 0; color:var(--muted); font-size:14px; }
 .step + .step { border-top:1px solid var(--line); }
 .step-info { flex:1; min-width:0; }
@@ -57,6 +64,7 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
 .pin span { transform:rotate(45deg); color:#fff; font-weight:700; font-size:13px; }
 .pin.a { background:var(--a); }
 .pin.b { background:var(--b); }
+.pin.waypoint { background:#f59e0b; }
 .loading .leaflet-container { cursor:progress; }
 .userbar { display:none; justify-content:space-between; align-items:center; gap:8px; margin:-4px 0 10px; font-size:13px; color:var(--muted); }
 .userbar.show { display:flex; }
@@ -86,6 +94,8 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
     <div class="userbar" id="userbar"><span id="userName"></span><button id="logout" type="button">Выйти</button></div>
     <div class="userbar" id="authLinks"><a href="login.html">Войти</a><a href="register.html">Регистрация</a></div>
     <div class="step" id="stepA"><div class="dot a">A</div><div class="step-info">Старт<small id="coordA">не выбран</small></div><button class="step-clear" id="clearA" type="button" aria-label="Удалить старт" title="Удалить старт" hidden>×</button></div>
+    <div class="waypoints" id="waypoints"></div>
+    <div class="row"><button id="addWaypoint" type="button">+ Остановка</button></div>
     <div class="step" id="stepB"><div class="dot b">B</div><div class="step-info">Финиш<small id="coordB">не выбран</small></div><button class="step-clear" id="clearB" type="button" aria-label="Удалить финиш" title="Удалить финиш" hidden>×</button></div>
     <select id="profile">
         <option value="fastest">Быстрый</option>
