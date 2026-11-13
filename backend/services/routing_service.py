@@ -23,6 +23,10 @@ class RoutingService:
         return self._boundary_ring
 
     @property
+    def boundary(self):
+        return self._boundary
+
+    @property
     def profiles(self):
         return PROFILES
 

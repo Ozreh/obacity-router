@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 import userdb
 from app.api import router as api_router
 from auth import router as auth_router
+from comments import router as comments_router
 from config import FRONTEND_DIR, get_cors_origins
 from services.graph_service import load_boundary, load_graph
 from services.routing_service import RoutingService
@@ -26,6 +27,7 @@ def create_app() -> FastAPI:
     application = FastAPI(lifespan=lifespan)
     application.include_router(auth_router)
     application.include_router(api_router)
+    application.include_router(comments_router)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=get_cors_origins(),

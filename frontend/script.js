@@ -1,6 +1,15 @@
 const { api, readToken, saveToken, errorText } = Nav;
-const REVERSE_URL = 'http://127.0.0.1:8000/reverse';
+const REVERSE_URL = `${Nav.API_BASE}/reverse`;
 const WALK_SPEED_KMH = 5;
+const SLOPE_CLASSES = {
+    steep_up: { label: 'Крутой подъём', range: '> 8%', color: '#dc2626' },
+    up: { label: 'Подъём', range: '3–8%', color: '#f97316' },
+    flat: { label: 'Ровно', range: '±3%', color: '#2563eb' },
+    down: { label: 'Спуск', range: '3–8%', color: '#22c55e' },
+    steep_down: { label: 'Крутой спуск', range: '> 8%', color: '#0d9488' }
+};
+const COMMENT_TEXT_MAX = 300;
+const COMMENT_REFRESH_MS = 60000;
 
 const map = L.map('map', { zoomControl: false }).setView([35.494, 135.748], 14);
 L.control.zoom({ position: 'bottomleft' }).addTo(map);
@@ -16,6 +25,7 @@ const els = {
     clearA: $('clearA'), clearB: $('clearB'), waypoints: $('waypoints'),
     addWaypoint: $('addWaypoint'), panel: document.querySelector('.panel'), panelTitle: document.querySelector('.panel h3'),
     profile: $('profile'), swap: $('swap'), fit: $('fit'), locate: $('locate'), reset: $('reset'),
+    legend: $('legend'), legendItems: $('legendItems'), legendNote: $('legendNote'), legendElev: $('legendElev'), addComment: $('addComment'),
     userbar: $('userbar'), userName: $('userName'), logout: $('logout'), authLinks: $('authLinks')
 };
 
@@ -59,6 +69,9 @@ function showMap(user) {
     document.body.classList.remove('checking');
     setTimeout(() => map.invalidateSize(), 0);
     loadBoundary();
+    loadComments();
+    setInterval(loadComments, COMMENT_REFRESH_MS);
+    setInterval(pruneExpiredComments, 15000);
 }
 
 async function bootAuth() {
@@ -77,7 +90,7 @@ async function bootAuth() {
     }
 }
 
-const state = { markers: { a: null, b: null }, waypoints: [], route: null, controller: null, addingWaypoint: false };
+const state = { markers: { a: null, b: null }, waypoints: [], route: null, controller: null, addingWaypoint: false, addingComment: false };
 
 const pinIcon = (type, label) => L.divIcon({
     className: '',
@@ -240,6 +253,7 @@ function clearRoute() {
     if (state.route) map.removeLayer(state.route);
     state.route = null;
     els.summary.classList.remove('show');
+    els.legend.hidden = true;
     els.fit.disabled = true;
 }
 
@@ -288,7 +302,8 @@ async function buildRoute() {
             setStatus(data.error + '. Попробуйте передвинуть точки', true);
             return;
         }
-        state.route = L.polyline(data.route, { color: '#2563eb', weight: 6, opacity: .9 }).addTo(map);
+        state.route = drawRoute(data);
+        renderLegend(data.slope);
         els.dist.textContent = fmtDist(data.distance_m ?? routeLength(data.route));
         els.time.textContent = fmtSeconds(data.time_s);
         els.summary.classList.add('show');
@@ -303,12 +318,57 @@ async function buildRoute() {
     }
 }
 
+function drawRoute(data) {
+    const group = L.featureGroup();
+    L.polyline(data.route, { color: '#fff', weight: 10, opacity: .85, lineJoin: 'round', interactive: false }).addTo(group);
+    if (data.slope && data.slope.segments.length) {
+        data.slope.segments.forEach(seg => {
+            const info = SLOPE_CLASSES[seg.cls];
+            L.polyline(seg.coords, { color: info.color, weight: 6, opacity: 1, lineCap: 'butt', lineJoin: 'round' })
+                .bindTooltip(`${info.label}: ${seg.grade > 0 ? '+' : ''}${seg.grade}%`, { sticky: true })
+                .addTo(group);
+        });
+    } else {
+        L.polyline(data.route, { color: '#2563eb', weight: 6, opacity: .95, lineJoin: 'round' }).addTo(group);
+    }
+    return group.addTo(map);
+}
+
+function renderLegend(slope) {
+    els.legendItems.innerHTML = '';
+    els.legend.hidden = false;
+    if (!slope) {
+        els.legendElev.textContent = '';
+        els.legendNote.textContent = 'Данные о высотах сейчас недоступны';
+        return;
+    }
+    const used = new Set(slope.segments.map(seg => seg.cls));
+    Object.entries(SLOPE_CLASSES).forEach(([key, info]) => {
+        if (!used.has(key)) return;
+        const row = document.createElement('div');
+        row.className = 'legend-item';
+        const swatch = document.createElement('i');
+        swatch.style.background = info.color;
+        const name = document.createElement('span');
+        name.textContent = info.label;
+        const range = document.createElement('em');
+        range.textContent = info.range;
+        row.append(swatch, name, range);
+        els.legendItems.appendChild(row);
+    });
+    els.legendElev.textContent = `${slope.min_m}–${slope.max_m} м`;
+    els.legendNote.textContent = `Набор высоты +${slope.gain_m} м · спуск −${slope.loss_m} м`;
+}
+
 function placePoint(latlng) {
     if (!insideBoundary(latlng)) {
         setStatus('Точка за пределами Обамы', true);
         return;
     }
-    if (state.addingWaypoint) {
+    if (state.addingComment) {
+        setCommentMode(false);
+        openCommentEditor(latlng);
+    } else if (state.addingWaypoint) {
         addWaypoint(latlng);
     } else if (!state.markers.a) {
         addMarker('a', latlng);
@@ -355,12 +415,171 @@ function clearPoint(type) {
     if (state.markers.a && state.markers.b) buildRoute();
 }
 
+const commentPins = new Map();
+const commentIcon = mine => L.divIcon({
+    className: '',
+    html: `<div class="cmt-pin${mine ? ' mine' : ''}"><span>💬</span></div>`,
+    iconSize: [34, 34],
+    iconAnchor: [6, 34],
+    popupAnchor: [10, -34]
+});
+
+function setCommentMode(on) {
+    state.addingComment = on;
+    els.addComment.classList.toggle('active-mode', on);
+    els.addComment.textContent = on ? 'Кликните на карте… (отмена)' : '💬 Оставить комментарий';
+    if (on) {
+        state.addingWaypoint = false;
+        updateSteps();
+        setStatus('Кликните на карте там, где хотите оставить комментарий');
+    }
+}
+
+function fmtLeft(expiresAt) {
+    const sec = Math.max(0, expiresAt - Date.now() / 1000);
+    const min = Math.ceil(sec / 60);
+    if (min < 60) return `${min} мин`;
+    return `${Math.floor(min / 60)} ч ${min % 60} мин`;
+}
+
+function removeCommentPin(id) {
+    const pin = commentPins.get(id);
+    if (!pin) return;
+    map.removeLayer(pin.marker);
+    commentPins.delete(id);
+}
+
+function commentPopupContent(comment) {
+    const box = document.createElement('div');
+    box.className = 'cmt-popup';
+    const author = document.createElement('div');
+    author.className = 'cmt-author';
+    author.textContent = comment.mine ? 'Вы' : comment.author;
+    const text = document.createElement('div');
+    text.className = 'cmt-text';
+    text.textContent = comment.text;
+    const left = document.createElement('div');
+    left.className = 'cmt-left';
+    left.textContent = `Исчезнет через ${fmtLeft(comment.expires_at)}`;
+    box.append(author, text, left);
+    if (comment.mine) {
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.textContent = 'Удалить';
+        remove.addEventListener('click', async () => {
+            remove.disabled = true;
+            try {
+                const res = await api(`/comments/${comment.id}`, { method: 'DELETE' });
+                if (res.status === 401) return logout(true);
+                if (res.ok || res.status === 404) removeCommentPin(comment.id);
+                else {
+                    remove.disabled = false;
+                    setStatus(errorText(res), true);
+                }
+            } catch (err) {
+                remove.disabled = false;
+                setStatus(Nav.NO_CONNECTION, true);
+            }
+        });
+        box.appendChild(remove);
+    }
+    return box;
+}
+
+function upsertCommentPin(comment) {
+    const existing = commentPins.get(comment.id);
+    if (existing) {
+        existing.data = comment;
+        existing.marker.setPopupContent(commentPopupContent(comment));
+        return;
+    }
+    const marker = L.marker([comment.lat, comment.lon], { icon: commentIcon(comment.mine) }).addTo(map);
+    marker.bindPopup(() => commentPopupContent(commentPins.get(comment.id).data), { minWidth: 230, maxWidth: 260 });
+    commentPins.set(comment.id, { data: comment, marker });
+}
+
+function pruneExpiredComments() {
+    const now = Date.now() / 1000;
+    commentPins.forEach((pin, id) => {
+        if (pin.data.expires_at <= now) removeCommentPin(id);
+    });
+}
+
+async function loadComments() {
+    try {
+        const res = await api('/comments');
+        if (res.status === 401) return logout(true);
+        if (!res.ok || !Array.isArray(res.data)) return;
+        const alive = new Set(res.data.map(comment => comment.id));
+        [...commentPins.keys()].forEach(id => { if (!alive.has(id)) removeCommentPin(id); });
+        res.data.forEach(upsertCommentPin);
+    } catch (err) {}
+}
+
+function openCommentEditor(latlng) {
+    if (!insideBoundary(latlng)) {
+        setStatus('Точка за пределами Обамы', true);
+        return;
+    }
+    const box = document.createElement('div');
+    box.className = 'cmt-popup';
+    const area = document.createElement('textarea');
+    area.maxLength = COMMENT_TEXT_MAX;
+    area.placeholder = 'Что здесь важно знать? Исчезнет через 24 часа';
+    const row = document.createElement('div');
+    row.className = 'cmt-row';
+    const count = document.createElement('span');
+    count.className = 'cmt-count';
+    count.textContent = `0/${COMMENT_TEXT_MAX}`;
+    const send = document.createElement('button');
+    send.type = 'button';
+    send.className = 'primary';
+    send.textContent = 'Опубликовать';
+    row.append(count, send);
+    const error = document.createElement('div');
+    error.className = 'cmt-error';
+    box.append(area, row, error);
+    area.addEventListener('input', () => { count.textContent = `${area.value.length}/${COMMENT_TEXT_MAX}`; });
+    send.addEventListener('click', async () => {
+        const text = area.value.trim();
+        if (!text) {
+            error.textContent = 'Введите текст комментария';
+            return;
+        }
+        send.disabled = true;
+        error.textContent = '';
+        try {
+            const res = await api('/comments', { method: 'POST', body: { lat: latlng.lat, lon: latlng.lng, text } });
+            if (res.status === 401) return logout(true);
+            if (!res.ok) {
+                error.textContent = errorText(res);
+                send.disabled = false;
+                return;
+            }
+            map.closePopup(popup);
+            upsertCommentPin(res.data);
+            setStatus('Комментарий добавлен. Он исчезнет через 24 часа');
+        } catch (err) {
+            error.textContent = Nav.NO_CONNECTION;
+            send.disabled = false;
+        }
+    });
+    const popup = L.popup({ minWidth: 230, maxWidth: 260, closeOnClick: false }).setLatLng(latlng).setContent(box).openOn(map);
+    setTimeout(() => area.focus(), 0);
+}
+
 map.on('click', e => placePoint(e.latlng));
+map.on('contextmenu', e => {
+    setCommentMode(false);
+    openCommentEditor(e.latlng);
+});
+els.addComment.addEventListener('click', () => setCommentMode(!state.addingComment));
 
 els.reset.addEventListener('click', resetAll);
 els.addWaypoint.addEventListener('click', () => {
     if (state.waypoints.length >= 8) return;
     state.addingWaypoint = !state.addingWaypoint;
+    if (state.addingWaypoint) setCommentMode(false);
     updateSteps();
     setStatus(state.addingWaypoint ? 'Кликните на карте, чтобы добавить остановку' : 'Добавление остановки отменено');
 });

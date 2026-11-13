@@ -5,7 +5,7 @@ services:
       discovery.type: single-node
       xpack.security.enabled: "false"
       ES_JAVA_OPTS: -Xms512m -Xmx512m
-    ports: ["9200:9200"]
+    ports: ["127.0.0.1:9200:9200"]
     volumes: [esdata:/usr/share/elasticsearch/data]
 
   search-service:
@@ -15,7 +15,7 @@ services:
       INTERNAL_TOKEN: change-me
       ALLOWED_ORIGIN: "*"
       PORT: 3002
-    ports: ["3002:3002"]
+    ports: ["127.0.0.1:3002:3002"]
     depends_on: [elasticsearch]
 
   address-service:
@@ -25,8 +25,26 @@ services:
       SEARCH_SERVICE_URL: http://search-service:3002
       INTERNAL_TOKEN: change-me
       PORT: 3001
-    ports: ["3001:3001"]
+    ports: ["127.0.0.1:3001:3001"]
     depends_on: [search-service]
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    volumes:
+      - ./backend:/app/backend
+      - ./address-service/data:/app/address-service/data:ro
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["${NGINX_PORT:-80}:80"]
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on: [backend]
+    restart: unless-stopped
 
 volumes:
   esdata:

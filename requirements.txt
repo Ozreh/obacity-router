@@ -9,3 +9,4 @@ pyjwt
 google-auth
 requests
 psycopg[binary]
+pillow

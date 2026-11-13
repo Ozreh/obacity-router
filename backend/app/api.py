@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from shapely import STRtree
 from shapely.geometry import Point
 
+import elevation
 from services.routing_service import RouteError
 
 log = logging.getLogger(__name__)
@@ -24,6 +25,7 @@ class RouteResponse(BaseModel):
     time_s: int | None = None
     distance_m: int | None = None
     error: str | None = None
+    slope: dict | None = None
 
 
 class BoundaryResponse(BaseModel):
@@ -59,6 +61,7 @@ def calculate_route(request: Request, lat1: float, lon1: float, lat2: float, lon
             "route": result["coords"],
             "time_s": round(result["time_s"]),
             "distance_m": round(result["distance_m"]),
+            "slope": elevation.slope_segments(result["coords"]),
         }
     except RouteError as error:
         return {"error": str(error)}

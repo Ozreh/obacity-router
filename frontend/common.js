@@ -1,5 +1,6 @@
 const Nav = (() => {
-    const API_BASE = location.protocol.startsWith('http') && location.port === '8000'
+    const DEV_PORTS = ['5500', '5173', '3000'];
+    const API_BASE = location.protocol.startsWith('http') && !DEV_PORTS.includes(location.port)
         ? location.origin
         : 'http://127.0.0.1:8000';
     const TOKEN_KEY = 'obama_nav_token';
@@ -90,5 +91,5 @@ const Nav = (() => {
         } catch (e) {}
     }
 
-    return { api, readToken, saveToken, errorText, goTo, redirectIfLoggedIn, finishAuth, setupGoogle, NO_CONNECTION };
+    return { API_BASE, api, readToken, saveToken, errorText, goTo, redirectIfLoggedIn, finishAuth, setupGoogle, NO_CONNECTION };
 })();
