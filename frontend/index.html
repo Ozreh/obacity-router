@@ -75,8 +75,15 @@ select { width:100%; font:inherit; font-size:14px; padding:9px 10px; margin-top:
 .checking .panel, .checking #map { visibility:hidden; }
 .search { position:absolute; top:12px; left:12px; z-index:1000; width:320px; max-width:calc(100vw - 24px); }
 .search-field { position:relative; }
+.search-categories { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+.search-categories button { padding:5px 7px; font-size:11px; background:var(--bg); color:var(--fg); box-shadow:0 3px 12px rgba(0,0,0,.16); }
+.more-categories { flex-basis:100%; color:var(--fg); font-size:12px; }
+.more-categories summary { display:inline-block; padding:5px 8px; border-radius:8px; background:var(--bg); box-shadow:0 3px 12px rgba(0,0,0,.16); cursor:pointer; }
+.search-categories-extra { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
 #search-input { width:100%; font:inherit; font-size:14px; padding:11px 42px 11px 14px; border-radius:12px; border:1px solid var(--line); background:var(--bg); color:var(--fg); box-shadow:0 6px 24px rgba(0,0,0,.25); }
 #search-input:focus { outline:none; border-color:var(--accent); }
+#search-input::-webkit-search-cancel-button { -webkit-appearance:none; appearance:none; }
+.poi-map-icon { display:grid; place-items:center; border:2px solid #fff; border-radius:50%; background:#2563eb; box-shadow:0 2px 8px rgba(0,0,0,.45); color:#fff; font-size:16px; }
 #search-clear { position:absolute; top:50%; right:7px; transform:translateY(-50%); width:30px; height:30px; padding:0; border:0; border-radius:50%; color:var(--muted); font-size:20px; line-height:1; }
 #search-clear[hidden] { display:none; }
 #search-results { margin:6px 0 0; padding:4px; list-style:none; background:var(--bg); color:var(--fg); border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.25); }
@@ -149,15 +156,42 @@ button.active-mode { border-color:var(--accent); color:var(--accent); background
 </div>
 <div class="search">
     <div class="search-field">
-        <input id="search-input" type="search" autocomplete="off" placeholder="Улица, дом" aria-label="Поиск адреса">
+        <input id="search-input" type="search" autocomplete="off" placeholder="Адрес, кофе / address, coffee" aria-label="Поиск адресов и мест">
         <button id="search-clear" type="button" aria-label="Очистить поиск" title="Очистить поиск" hidden>×</button>
+    </div>
+    <div class="search-categories" aria-label="Категории мест">
+        <button type="button" data-category="coffee" data-query="кофе">☕ Кофе</button>
+        <button type="button" data-category="ramen" data-query="рамен">🍜 Рамен</button>
+        <button type="button" data-category="restaurant" data-query="ресторан">🍽️ Ресторан</button>
+        <details class="more-categories">
+          <summary>Ещё места</summary>
+          <div class="search-categories-extra">
+        <button type="button" data-category="shopping" data-query="тц">🛍 ТЦ / магазины</button>
+        <button type="button" data-category="convenience" data-query="конбини">🏪 Конбини</button>
+        <button type="button" data-category="supermarket" data-query="супермаркет">🛒 Супермаркеты</button>
+        <button type="button" data-category="healthcare" data-query="больница">🏥 Медицина</button>
+        <button type="button" data-category="pharmacy" data-query="аптека">💊 Аптеки</button>
+        <button type="button" data-category="transport" data-query="транспорт">🚌 Транспорт</button>
+        <button type="button" data-category="money" data-query="банкомат">🏧 Деньги / почта</button>
+        <button type="button" data-category="education" data-query="школа">🎓 Школы / вузы</button>
+        <button type="button" data-category="public" data-query="общественное">🚻 Городские службы</button>
+        <button type="button" data-category="religion" data-query="храм">⛩ Храмы</button>
+        <button type="button" data-category="stay" data-query="отель">🏨 Отели / рёканы</button>
+        <button type="button" data-category="leisure" data-query="парк">🌳 Парки / спорт</button>
+        <button type="button" data-category="culture" data-query="музей">🏛 Музеи / места</button>
+        <button type="button" data-category="services" data-query="сервисы">🛁 Услуги</button>
+        <button type="button" data-category="office" data-query="офис">🏢 Офисы</button>
+        <button type="button" data-category="building" data-query="здания">📍 Здания</button>
+        <button type="button" data-category="landuse" data-query="район">🗺 Районы</button>
+          </div>
+        </details>
     </div>
     <ul id="search-results" hidden></ul>
 </div>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="common.js"></script>
-<script src="search-box.js"></script>
+<script src="search-box.js?v=poi2"></script>
 <script src="script.js"></script>
 </body>
 </html>

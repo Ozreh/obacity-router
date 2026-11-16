@@ -699,6 +699,7 @@ initSearchBox(map, {
     input: $('search-input'),
     list: $('search-results'),
     clearButton: $('search-clear'),
+    categoryButtons: document.querySelectorAll('.search-categories [data-category]'),
     onSelect: setPointFromSearch
 });
 
